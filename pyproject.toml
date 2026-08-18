@@ -1,0 +1,10 @@
+[project]
+name = "pysparkdbt"
+version = "0.1.0"
+description = "dbt Databricks project for pysparkdbt"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dbt-core>=1.12.0",
+    "dbt-databricks>=1.12.3",
+]
