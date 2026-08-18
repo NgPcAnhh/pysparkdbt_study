@@ -28,3 +28,4 @@ sources:
     schema: gold
     tables:
       - name: customers
+      - name: facttrip
