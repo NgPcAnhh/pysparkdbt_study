@@ -1,0 +1,5 @@
+{
+  "python.defaultInterpreterPath": "D:/project/dbt_study/.venv/Scripts/python.exe",
+  "dbt.dbtPythonPath": "D:/project/dbt_study/.venv/Scripts/python.exe",
+  "dbt.dbtPath": "D:/project/dbt_study/.venv/Scripts/dbt.exe"
+}
