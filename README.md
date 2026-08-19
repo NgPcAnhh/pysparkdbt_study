@@ -62,6 +62,17 @@ dbt debug
   dbt test
   ```
 
+- **Sinh tài liệu & xem Data Catalog / Lineage Graph:**
+  1. Lệnh tạo catalog tài liệu:
+     ```powershell
+     dbt docs generate
+     ```
+  2. Lệnh khởi chạy Web Server xem giao diện tài liệu & Lineage Graph trực quan:
+     ```powershell
+     dbt docs serve
+     ```
+     *(Trình duyệt sẽ tự động mở giao diện web tại `http://localhost:8080`)*
+
 ---
 
 ## Cấu trúc thư mục dbt
