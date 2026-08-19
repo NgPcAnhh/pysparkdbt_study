@@ -2,30 +2,47 @@ version: 2
 
 sources:
   - name: source_bronze
+    description: "Tầng dữ liệu thô (Bronze Layer) được nạp trực tiếp từ nguồn hệ thống"
     database: pysparkdbt
     schema: bronze
     tables:
       - name: customers
+        description: "Bảng dữ liệu khách hàng thô"
       - name: drivers
+        description: "Bảng dữ liệu tài xế thô"
       - name: vehicles
+        description: "Bảng dữ liệu phương tiện thô"
       - name: payments
+        description: "Bảng dữ liệu giao dịch thanh toán thô"
       - name: locations
+        description: "Bảng dữ liệu địa điểm thô"
       - name: trips
+        description: "Bảng dữ liệu chuyến đi thô"
 
   - name: source_silver
+    description: "Tầng dữ liệu làm sạch và chuẩn hóa (Silver Layer)"
     database: pysparkdbt
     schema: silver
     tables:
       - name: customers
+        description: "Bảng khách hàng tầng Silver"
       - name: drivers
+        description: "Bảng tài xế tầng Silver"
       - name: vehicles
+        description: "Bảng phương tiện tầng Silver"
       - name: payments
+        description: "Bảng thanh toán tầng Silver"
       - name: locations
+        description: "Bảng vị trí tầng Silver"
       - name: trips
+        description: "Bảng chuyến đi tầng Silver"
 
   - name: source_gold
+    description: "Tầng dữ liệu tổng hợp phục vụ báo cáo BI & Analytics (Gold Layer)"
     database: pysparkdbt
     schema: gold
     tables:
       - name: customers
+        description: "Bảng DimCustomers lưu lịch sử biến đổi (SCD Type 2)"
       - name: facttrip
+        description: "Bảng Fact các chuyến đi tầng Gold"

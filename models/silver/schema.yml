@@ -1,0 +1,150 @@
+version: 2
+
+models:
+  - name: customers
+    description: "Bảng dữ liệu khách hàng tầng Silver (đã làm sạch, bổ sung full_name và domain)"
+    columns:
+      - name: customer_id
+        description: "Mã định danh duy nhất của khách hàng (Primary Key)"
+        tests:
+          - unique
+          - not_null
+      - name: full_name
+        description: "Họ và tên ghép từ first_name và last_name"
+      - name: email
+        description: "Địa chỉ email khách hàng"
+      - name: phone_number
+        description: "Số điện thoại liên hệ"
+      - name: city
+        description: "Thành phố sinh sống"
+      - name: signup_date
+        description: "Ngày đăng ký tài khoản"
+      - name: domain
+        description: "Tên miền email của khách hàng"
+      - name: last_updated_timestamp
+        description: "Thời điểm cập nhật dữ liệu gần nhất"
+
+  - name: drivers
+    description: "Bảng dữ liệu tài xế tầng Silver (đã bổ sung full_name)"
+    columns:
+      - name: driver_id
+        description: "Mã định danh duy nhất của tài xế (Primary Key)"
+        tests:
+          - unique
+          - not_null
+      - name: full_name
+        description: "Họ và tên ghép từ first_name và last_name"
+      - name: phone_number
+        description: "Số điện thoại liên hệ"
+      - name: vehicle_id
+        description: "Mã phương tiện tài xế đang quản lý"
+      - name: driver_rating
+        description: "Đánh giá trung bình của tài xế"
+      - name: city
+        description: "Thành phố tài xế hoạt động"
+      - name: last_updated_timestamp
+        description: "Thời điểm cập nhật dữ liệu gần nhất"
+
+  - name: locations
+    description: "Bảng thông tin vị trí và địa lý tầng Silver"
+    columns:
+      - name: location_id
+        description: "Mã định danh duy nhất của địa điểm (Primary Key)"
+        tests:
+          - unique
+          - not_null
+      - name: city
+        description: "Tên thành phố"
+      - name: state
+        description: "Tên tỉnh/bang"
+      - name: country
+        description: "Quốc gia"
+      - name: latitude
+        description: "Tọa độ vĩ độ (Latitude)"
+      - name: longitude
+        description: "Tọa độ kinh độ (Longitude)"
+      - name: last_updated_timestamp
+        description: "Thời điểm cập nhật dữ liệu gần nhất"
+
+  - name: payments
+    description: "Bảng thông tin thanh toán tầng Silver (bổ sung online_payment_status)"
+    columns:
+      - name: payment_id
+        description: "Mã định danh duy nhất của giao dịch thanh toán (Primary Key)"
+        tests:
+          - unique
+          - not_null
+      - name: trip_id
+        description: "Mã chuyến đi liên quan"
+      - name: customer_id
+        description: "Mã khách hàng thực hiện thanh toán"
+      - name: payment_method
+        description: "Hình thức thanh toán"
+      - name: payment_status
+        description: "Trạng thái giao dịch"
+      - name: amount
+        description: "Số tiền thanh toán"
+      - name: transaction_time
+        description: "Thời điểm thực hiện giao dịch"
+      - name: online_payment_status
+        description: "Trạng thái thanh toán trực tuyến"
+      - name: last_updated_timestamp
+        description: "Thời điểm cập nhật dữ liệu gần nhất"
+
+  - name: trips
+    description: "Bảng dữ liệu chuyến đi tầng Silver (đã làm sạch và nạp tăng tiến)"
+    columns:
+      - name: trip_id
+        description: "Mã định danh duy nhất của chuyến đi (Primary Key)"
+        tests:
+          - unique
+          - not_null
+      - name: vehicle_id
+        description: "Mã phương tiện"
+      - name: driver_id
+        description: "Mã tài xế"
+        tests:
+          - not_null
+      - name: customer_id
+        description: "Mã khách hàng"
+        tests:
+          - not_null
+      - name: trip_start_time
+        description: "Thời gian bắt đầu chuyến đi"
+      - name: trip_end_time
+        description: "Thời gian kết thúc chuyến đi"
+      - name: start_location
+        description: "Mã địa điểm đón khách"
+      - name: end_location
+        description: "Mã địa điểm trả khách"
+      - name: distance_km
+        description: "Quãng đường di chuyển (km)"
+      - name: fare_amount
+        description: "Tổng cước phí chuyến đi"
+      - name: payment_method
+        description: "Phương thức thanh toán"
+      - name: trip_status
+        description: "Trạng thái chuyến đi"
+      - name: last_updated_timestamp
+        description: "Thời điểm cập nhật dữ liệu gần nhất"
+
+  - name: vehicles
+    description: "Bảng thông tin phương tiện tầng Silver"
+    columns:
+      - name: vehicle_id
+        description: "Mã định danh duy nhất của phương tiện (Primary Key)"
+        tests:
+          - unique
+          - not_null
+      - name: license_plate
+        description: "Biển số xe"
+      - name: model
+        description: "Dòng xe"
+      - name: make
+        description: "Hãng sản xuất"
+      - name: year
+        description: "Năm sản xuất"
+      - name: vehicle_type
+        description: "Loại phương tiện"
+      - name: last_updated_timestamp
+        description: "Thời điểm cập nhật dữ liệu gần nhất"

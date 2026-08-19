@@ -1,0 +1,273 @@
+version: 2
+
+semantic_models:
+  # =========================================================================
+  # 0. TIME SPINE MODEL (TRỤC THỜI GIAN THEO NGÀY DÙNG CHO DBT METRICFLOW)
+  # =========================================================================
+  - name: metricflow_time_spine
+    model: ref('metricflow_time_spine')
+    description: |
+      Mô hình trục thời gian ngày liên tục (Daily Time Spine).
+      Đây là hạ tầng bắt buộc của dbt MetricFlow giúp khớp nối các chỉ số (metrics) theo ngày, tuần, tháng, quý và năm.
+
+    entities:
+      - name: date_day
+        type: primary
+        expr: date_day
+        description: "Mốc ngày liên tục (Primary Time Entity) định dạng YYYY-MM-DD"
+
+    dimensions:
+      - name: date_day
+        type: time
+        type_params:
+          time_granularity: day
+        description: "Chiều thời gian hạt nhân cơ bản theo Ngày"
+
+  # =========================================================================
+  # 1. SEMANTIC MODEL: CHI TIẾT & DOANH THU CHUYẾN ĐI (FACTTRIP)
+  # =========================================================================
+  - name: semantic_facttrip
+    model: ref('facttrip')
+    description: |
+      Tầng Ngữ Nghĩa (Semantic Layer) trung tâm quản lý các chỉ số tài chính, vận hành chuyến đi và hiệu suất gọi xe.
+      Đo lường toàn bộ dòng tiền cước, quãng đường di chuyển, tỷ lệ hoàn thành/hủy chuyến và số lượng đối tượng tham gia.
+
+    entities:
+      - name: trip
+        type: primary
+        expr: trip_id
+        description: "Mã định danh duy nhất của từng giao dịch chuyến đi (Primary Key)"
+      - name: customer
+        type: foreign
+        expr: customer_id
+        description: "Mã định danh khách hàng đặt chuyến đi (Foreign Key)"
+      - name: driver
+        type: foreign
+        expr: driver_id
+        description: "Mã định danh tài xế đảm nhận chuyến đi (Foreign Key)"
+      - name: vehicle
+        type: foreign
+        expr: vehicle_id
+        description: "Mã định danh phương tiện xe thực hiện chuyên chở (Foreign Key)"
+
+    measures:
+      # --- CHỈ SỐ DOANH THU & TÀI CHÍNH ---
+      - name: total_revenue
+        description: |
+          [Metric Doanh thu] Tổng doanh thu tiền cước thu được từ tất cả các chuyến đi.
+          Công thức: SUM(fare_amount). Dùng để theo dõi tình hình tăng trưởng tổng doanh thu dịch vụ.
+        expr: fare_amount
+        agg: sum
+
+      - name: average_fare_per_trip
+        description: |
+          [Metric Cước trung bình] Giá trị cước phí trung bình trên mỗi chuyến đi (ARPU per Trip).
+          Công thức: AVG(fare_amount). Dùng để phân tích mức độ chi tiêu trung bình của khách hàng trên 1 chuyến.
+        expr: fare_amount
+        agg: average
+
+      - name: min_trip_fare
+        description: |
+          [Metric Cước tối thiểu] Mức giá cước chuyến đi thấp nhất trong hệ thống.
+          Công thức: MIN(fare_amount). Dùng để kiểm tra cước sàn hoặc các chuyến đi ngắn.
+        expr: fare_amount
+        agg: min
+
+      - name: max_trip_fare
+        description: |
+          [Metric Cước tối đa] Mức giá cước chuyến đi cao nhất từng ghi nhận.
+          Công thức: MAX(fare_amount). Dùng để phát hiện các chuyến đi đường dài hoặc bất thường.
+        expr: fare_amount
+        agg: max
+
+      # --- CHỈ SỐ SỐ LƯỢNG & VẬN HÀNH ---
+      - name: total_trips
+        description: |
+          [Metric Tổng chuyến] Tổng số lượng nhu cầu chuyến đi phát sinh (bao gồm cả thành công và hủy).
+          Công thức: COUNT(DISTINCT trip_id). Đo lường tổng quy mô nhu cầu gọi xe của thị trường.
+        expr: trip_id
+        agg: count_distinct
+
+      - name: total_completed_trips
+        description: |
+          [Metric Chuyến thành công] Số chuyến đi phục vụ thành công (Status = COMPLETED).
+          Công thức: COUNT_DISTINCT(trip_id) FILTER WHERE trip_status = 'COMPLETED'.
+        expr: "CASE WHEN upper(trip_status) = 'COMPLETED' THEN trip_id ELSE NULL END"
+        agg: count_distinct
+
+      - name: total_cancelled_trips
+        description: |
+          [Metric Chuyến bị hủy] Số chuyến đi bị hủy bởi khách hoặc tài xế (Status = CANCELLED).
+          Công thức: COUNT_DISTINCT(trip_id) FILTER WHERE trip_status = 'CANCELLED'.
+        expr: "CASE WHEN upper(trip_status) = 'CANCELLED' THEN trip_id ELSE NULL END"
+        agg: count_distinct
+
+      - name: total_unique_customers_served
+        description: |
+          [Metric Khách hàng Active] Số lượng khách hàng duy nhất có phát sinh giao dịch chuyến đi.
+          Công thức: COUNT(DISTINCT customer_id). Đo lường quy mô tệp người dùng đang hoạt động (MAU/DAU).
+        expr: customer_id
+        agg: count_distinct
+
+      - name: total_active_drivers
+        description: |
+          [Metric Tài xế Active] Số lượng tài xế duy nhất có nhận chuyến đi trong hệ thống.
+          Công thức: COUNT(DISTINCT driver_id). Đo lường quy mô nguồn cung tài xế trên thị trường.
+        expr: driver_id
+        agg: count_distinct
+
+      # --- CHỈ SỐ QUÃNG ĐƯỜNG & HIỆU SUẤT ---
+      - name: total_distance_km
+        description: |
+          [Metric Tổng quãng đường] Tổng quãng đường di chuyển của tất cả các chuyến đi (km).
+          Công thức: SUM(distance_km). Đo lường tổng sản lượng km đội xe cày ải được.
+        expr: distance_km
+        agg: sum
+
+      - name: average_trip_distance_km
+        description: |
+          [Metric Quãng đường trung bình] Quãng đường trung bình của mỗi chuyến đi (km/trip).
+          Công thức: AVG(distance_km). Dùng để phân tích xu hướng chuyến đi ngắn (nội thành) hay chuyến dài (ngoại thành).
+        expr: distance_km
+        agg: average
+
+    dimensions:
+      - name: payment_method
+        type: categorical
+        description: "Phương thức thanh toán giao dịch: CASH (Tiền mặt), CARD (Thẻ), WALLET (Ví điện tử)"
+
+      - name: trip_status
+        type: categorical
+        description: "Trạng thái chuyến đi: COMPLETED (Hoàn thành), CANCELLED (Bị hủy), IN_PROGRESS (Đang đi)"
+
+      - name: trip_start_time
+        type: time
+        type_params:
+          time_granularity: day
+        description: "Thời điểm khách hàng bắt đầu chuyến đi (Group theo Ngày/Tháng/Năm)"
+
+      - name: start_location
+        type: categorical
+        description: "Mã địa điểm đón khách hàng"
+
+      - name: end_location
+        type: categorical
+        description: "Mã địa điểm trả khách hàng"
+
+  # =========================================================================
+  # 2. SEMANTIC MODEL: THÔNG TIN KHÁCH HÀNG (CUSTOMERS)
+  # =========================================================================
+  - name: semantic_customers
+    model: ref('DimCustomers')
+    description: |
+      Tầng Ngữ Nghĩa phân tích tệp khách hàng, hành vi đăng ký tài khoản, vùng miền và nhà cung cấp email.
+
+    entities:
+      - name: customer
+        type: primary
+        expr: customer_id
+        description: "Mã định danh duy nhất của khách hàng"
+
+    measures:
+      - name: total_registered_customers
+        description: |
+          [Metric Tổng khách đăng ký] Tổng số lượng khách hàng đã tạo tài khoản thành công trong hệ thống.
+          Công thức: COUNT(DISTINCT customer_id). Dùng để đo lường tổng quy mô tệp khách hàng.
+        expr: customer_id
+        agg: count_distinct
+
+    dimensions:
+      - name: customer_city
+        type: categorical
+        expr: city
+        description: "Thành phố sinh sống và đăng ký của khách hàng"
+
+      - name: email_domain
+        type: categorical
+        expr: domain
+        description: "Nhà cung cấp email khách hàng sử dụng (gmail.com, yahoo.com, outlook.com,...)"
+
+      - name: signup_date
+        type: time
+        type_params:
+          time_granularity: month
+        description: "Thời điểm ngày đăng ký tài khoản khách hàng"
+
+  # =========================================================================
+  # 3. SEMANTIC MODEL: ĐỘI NGŨ TÀI XẾ (DRIVERS)
+  # =========================================================================
+  - name: semantic_drivers
+    model: ref('DimDrivers')
+    description: |
+      Tầng Ngữ Nghĩa phân tích nguồn cung đội ngũ tài xế, chất lượng phục vụ và điểm số đánh giá từ khách hàng.
+
+    entities:
+      - name: driver
+        type: primary
+        expr: driver_id
+        description: "Mã định danh duy nhất của tài xế"
+
+    measures:
+      - name: total_registered_drivers
+        description: |
+          [Metric Tổng tài xế] Tổng số lượng tài xế đã đăng ký và ký hợp đồng chạy xe.
+          Công thức: COUNT(DISTINCT driver_id). Đo lường tổng nguồn cung tài xế.
+        expr: driver_id
+        agg: count_distinct
+
+      - name: average_driver_rating
+        description: |
+          [Metric Rating trung bình] Điểm đánh giá chất lượng phục vụ trung bình của đội ngũ tài xế (thang điểm 5 sao).
+          Công thức: AVG(driver_rating). Dùng để theo dõi trải nghiệm khách hàng và chất lượng tài xế.
+        expr: driver_rating
+        agg: average
+
+    dimensions:
+      - name: driver_city
+        type: categorical
+        expr: city
+        description: "Thành phố tài xế đăng ký hoạt động kinh doanh"
+
+  # =========================================================================
+  # 4. SEMANTIC MODEL: THÔNG TIN PHƯƠNG TIỆN (VEHICLES)
+  # =========================================================================
+  - name: semantic_vehicles
+    model: ref('DimVehicles')
+    description: |
+      Tầng Ngữ Nghĩa phân tích cơ cấu đội xe, loại phương tiện, hãng xe và độ tuổi trung bình của phương tiện.
+
+    entities:
+      - name: vehicle
+        type: primary
+        expr: vehicle_id
+        description: "Mã định danh duy nhất của phương tiện vận tải"
+
+    measures:
+      - name: total_vehicles
+        description: |
+          [Metric Tổng số xe] Tổng số lượng phương tiện vận tải đăng ký trong hệ thống.
+          Công thức: COUNT(DISTINCT vehicle_id).
+        expr: vehicle_id
+        agg: count_distinct
+
+      - name: average_vehicle_year
+        description: |
+          [Metric Năm sản xuất trung bình] Năm sản xuất trung bình của đội xe.
+          Công thức: AVG(year). Dùng để đánh giá mức độ hiện đại/đổi mới của đội xe.
+        expr: year
+        agg: average
+
+    dimensions:
+      - name: vehicle_type
+        type: categorical
+        description: "Phân loại xe: 4_SEATER (4 chỗ), 7_SEATER (7 chỗ), ELECTRIC (Xe điện), LUXURY (Xe sang)"
+
+      - name: vehicle_make
+        type: categorical
+        expr: make
+        description: "Hãng sản xuất xe (Toyota, VinFast, Hyundai, Honda,...)"
+
+      - name: vehicle_model
+        type: categorical
+        expr: model
+        description: "Dòng xe cụ thể (Vios, VF8, Accent, City,...)"

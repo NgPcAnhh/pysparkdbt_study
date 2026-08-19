@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: facttrip
+    description: "Bảng Fact các chuyến đi tầng Gold cho phân tích & BI"
+
+  - name: metricflow_time_spine
+    description: "Trục thời gian liên tục theo ngày phục vụ dbt MetricFlow"
+
+  - name: customer_daily_metric
+    description: "Báo cáo Data Mart theo dõi hành vi đặt chuyến và chi tiêu của từng khách hàng THEO NGÀY"
+
+  - name: driver_daily_metric
+    description: "Báo cáo Data Mart theo dõi hiệu suất, số chuyến hoàn thành/hủy và thu nhập của từng tài xế THEO NGÀY"
+
+  - name: driver_performance_metric
+    description: "Báo cáo Data Mart tổng hợp hiệu suất và thu nhập tích lũy của tài xế"
+
+  - name: location_daily_metric
+    description: "Báo cáo Data Mart theo dõi nhu cầu đón khách và doanh thu của từng khu vực THEO NGÀY"
+
+  - name: location_analytics_metric
+    description: "Báo cáo Data Mart tổng hợp doanh thu theo khu vực đón khách"
+
+  - name: payment_daily_reconciliation
+    description: "Báo cáo Data Mart đối soát giao dịch thanh toán, số tiền xử lý theo từng cổng thanh toán THEO NGÀY"
+
+  - name: revenue_daily_metric
+    description: "Báo cáo Data Mart tổng hợp doanh thu, tỷ lệ hoàn thành, cước trung bình/km theo ngày"
+
+  - name: vehicle_daily_metric
+    description: "Báo cáo Data Mart theo dõi số xe hoạt động, quãng đường cày và doanh thu đội xe THEO NGÀY"
+
+  - name: customer_cohort_retention_metric
+    description: "Báo cáo Data Mart nâng cao phân tích tỷ lệ giữ chân khách hàng (Cohort Retention Rate) và ARPU theo tháng đăng ký"
+
+  - name: customer_rfm_segmentation_metric
+    description: "Báo cáo Data Mart nâng cao phân nhóm khách hàng theo thuật toán RFM (Champions/VIP, Loyal, At Risk, Lost)"
+
+  - name: driver_productivity_efficiency_metric
+    description: "Báo cáo Data Mart nâng cao phân loại tài xế theo thứ hạng Platinum/Gold/Silver và đo lường hiệu suất cày ải"
+
+  - name: hourly_peak_demand_metric
+    description: "Báo cáo Data Mart nâng cao phân tích nhu cầu và doanh thu theo 24 khung giờ (0-23h) và giờ cao điểm Morning/Evening Rush"
+
+  - name: route_demand_profitability_metric
+    description: "Báo cáo Data Mart nâng cao phân tích ma trận tuyến đường Điểm đón -> Điểm trả và lợi nhuận từng tuyến"
