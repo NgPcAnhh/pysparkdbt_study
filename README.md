@@ -51,40 +51,30 @@
 
 ## 2. Kiến trúc hệ thống
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    BLUESM DATA PLATFORM                             │
-│                                                                     │
-│  ┌──────────────┐    ┌────────────────────────────────────────────┐ │
-│  │   NGUỒN DL   │    │           DATABRICKS LAKEHOUSE             │ │
-│  │              │    │                                            │ │
-│  │  Hệ thống    │    │  ┌──────────┐  ┌────────────┐  ┌───────┐  │ │
-│  │  vận hành    │───▶│  │  BRONZE  │─▶│   SILVER   │─▶│  GOLD │  │ │
-│  │  (OLTP)      │    │  │ Raw Data │  │ Cleaned &  │  │ Data  │  │ │
-│  │              │    │  │ Delta    │  │ Enriched   │  │ Marts │  │ │
-│  │  customers   │    │  │ Tables   │  │ Delta      │  │       │  │ │
-│  │  drivers     │    │  └──────────┘  └────────────┘  └───────┘  │ │
-│  │  trips       │    │       ▲               ▲             ▲      │ │
-│  │  payments    │    │       │               │             │      │ │
-│  │  vehicles    │    │  PySpark Ingestion   dbt run       dbt run │ │
-│  │  locations   │    │                                            │ │
-│  └──────────────┘    │  ┌─────────────────────────────────────┐  │ │
-│                       │  │        SNAPSHOTS (SCD Type 2)       │  │ │
-│                       │  │  DimCustomers, DimDrivers,          │  │ │
-│                       │  │  DimVehicles, DimPayments,          │  │ │
-│                       │  │  DimLocations                       │  │ │
-│                       │  └─────────────────────────────────────┘  │ │
-│                       └────────────────────────────────────────────┘ │
-│                                        │                             │
-│  ┌─────────────────┐                   ▼                             │
-│  │   GITHUB ACTIONS│    ┌──────────────────────────────────────┐    │
-│  │   CI/CD         │    │     DATABRICKS LAKEVIEW DASHBOARD    │    │
-│  │                 │    │  • Revenue & Operations Overview      │    │
-│  │  Chạy tự động  │    │  • Driver Performance Analytics       │    │
-│  │  01:00 SA/ngày │    │  • Customer Insights (RFM, Cohort)    │    │
-│  └─────────────────┘    │  • Fleet & Payment Reconciliation    │    │
-│                          └──────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph S1["1. INGESTION (PySpark)"]
+        RAW[("Dữ liệu thô OLTP<br>• Trips, Customers<br>• Drivers, Payments<br>• Vehicles, Locations")] -->|PySpark Scripts| BRONZE[("🥉 Tầng BRONZE<br>pysparkdbt.bronze.*<br>(Delta Lake Raw Tables)")]
+    end
+
+    subgraph S2["2. TRANSFORMATION & QUALITY (dbt-databricks)"]
+        BRONZE -->|dbt snapshot| SNAPSHOT[("📸 Snapshots<br>SCD Type 2<br>DimCustomers, DimDrivers...")]
+        BRONZE -->|dbt run --select silver| SILVER[("🥈 Tầng SILVER<br>pysparkdbt.silver.*<br>(Cleaned & Incremental)")]
+        SILVER -->|dbt run --select gold| GOLD[("🥇 Tầng GOLD Data Marts<br>pysparkdbt.gold.*<br>• Daily Metrics<br>• RFM & Cohort<br>• Peak Hours & Routes")]
+        SNAPSHOT --> GOLD
+        GOLD -->|dbt test| TEST{"🧪 Data Quality Test<br>(14 Rules Pass)"}
+    end
+
+    subgraph S3["3. CI/CD & TELEGRAM MONITORING (GitHub Actions)"]
+        CRON["⏰ Lịch tự động (01:00 SA/ngày)<br>hoặc Git Push main"] --> GHA["🚀 GitHub Actions Runner"]
+        GHA -->|Chạy dbt pipeline| S2
+        TEST -->|Kết quả Pipeline| NOTIFY["📬 Summary & Telegram Bot"]
+        NOTIFY -->|Bắn tin nhắn alert| TELEGRAM[("📱 TELEGRAM BOT<br>✅ Success / ❌ Fail")]
+    end
+
+    subgraph S4["4. VISUALIZATION (Databricks Lakeview)"]
+        GOLD -->|Truy vấn trực tiếp| DASHBOARD["📊 DATABRICKS LIVE DASHBOARD<br>• Executive Overview<br>• Operations & Heatmap<br>• Driver Tiering (Platinum/Gold)<br>• Customer RFM & Cohort<br>• Fleet & Payment Reconciliation"]
+    end
 ```
 
 ### Stack công nghệ
