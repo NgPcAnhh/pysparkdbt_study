@@ -171,24 +171,49 @@ jobs:
           retention-days: 7
 
   # ===========================================================
-  # JOB 2: GỬI THÔNG BÁO KẾT QUẢ QUA TELEGRAM
-  # (Chạy sau Job 1, dù thành công hay thất bại)
+  # JOB 2: GHI TÓM TẮT KẾT QUẢ VÀO GITHUB ACTIONS SUMMARY
+  # (Không cần cấu hình gì thêm, tự động hoạt động)
   # ===========================================================
   notify:
-    name: "📬 Gửi thông báo kết quả"
+    name: "📬 Ghi kết quả Pipeline"
     runs-on: ubuntu-latest
     needs: dbt_pipeline
     if: always()
 
     steps:
-      - name: "📤 Gửi thông báo Telegram"
+      - name: "📊 Ghi kết quả vào GitHub Actions Summary"
+        run: |
+          STATUS="${{ needs.dbt_pipeline.result }}"
+          if [ "$STATUS" == "success" ]; then
+            ICON="✅"
+            STATUS_TEXT="THÀNH CÔNG"
+          else
+            ICON="❌"
+            STATUS_TEXT="THẤT BẠI"
+          fi
+
+          echo "## $ICON BlueSM dbt Pipeline — $STATUS_TEXT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Thông tin | Giá trị |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Kết quả** | $ICON $STATUS_TEXT |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Trigger bởi** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Thời gian** | ${{ github.run_started_at }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Run ID** | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 Để nhận thông báo Telegram, thêm secrets \`TELEGRAM_BOT_TOKEN\` và \`TELEGRAM_CHAT_ID\` vào GitHub repository." >> $GITHUB_STEP_SUMMARY
+
+      # Bước Telegram - CHỈ chạy khi đã cấu hình Secrets
+      - name: "📤 Gửi thông báo Telegram (nếu đã cấu hình)"
+        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
             🚀 *BlueSM dbt Pipeline*
-            
+
             📊 *Kết quả*: ${{ needs.dbt_pipeline.result == 'success' && '✅ THÀNH CÔNG' || '❌ THẤT BẠI' }}
             🕐 *Thời gian*: ${{ github.run_started_at }}
             🔗 *Chi tiết*: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
