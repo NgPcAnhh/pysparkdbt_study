@@ -206,7 +206,7 @@ jobs:
 
       # Bước Telegram - CHỈ chạy khi đã cấu hình Secrets
       - name: "📤 Gửi thông báo Telegram (nếu đã cấu hình)"
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        if: secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
