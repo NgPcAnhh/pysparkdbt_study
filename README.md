@@ -2,6 +2,9 @@
 
 > **Dự án Demo** — Hệ thống xử lý dữ liệu phân tích cho công ty vận tải gọi xe **BlueSM** (Blue Smart Mobility), xây dựng trên nền tảng **Databricks + dbt + PySpark** với kiến trúc Medallion (Bronze → Silver → Gold).
 
+### 📊 Live Published Dashboard
+🔗 **[Xem Databricks Live Dashboard — BlueSM Platform](https://dbc-1eb82f8a-7f14.cloud.databricks.com/dashboardsv3/01f19b9cdfac145c88ed22f8e4d89f7b/published?o=7474659662299061&f_operations_daily%7Echart_trips_trend=%257B%2522columns%2522%253A%255B%2522x%2522%255D%252C%2522rows%2522%253A%255B%255B%25222025-09-13T00%253A00%253A00.000Z%2522%255D%255D%257D)**
+
 ---
 
 ## 📋 Mục lục
@@ -365,7 +368,9 @@ Quy trình:
 
 **Công cụ**: Databricks SQL Dashboard (Lakeview)
 
-**Truy cập**: Databricks → Menu trái → Dashboards
+🔗 **[Truy cập trực tiếp Published Dashboard](https://dbc-1eb82f8a-7f14.cloud.databricks.com/dashboardsv3/01f19b9cdfac145c88ed22f8e4d89f7b/published?o=7474659662299061&f_operations_daily%7Echart_trips_trend=%257B%2522columns%2522%253A%255B%2522x%2522%255D%252C%2522rows%2522%253A%255B%255B%25222025-09-13T00%253A00%253A00.000Z%2522%255D%255D%257D)**
+
+**Truy cập Workspace**: Databricks → Menu trái → Dashboards
 
 ### Dashboard 1: Revenue & Operations Overview
 
