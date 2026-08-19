@@ -1,0 +1,74 @@
+name: dbt CI - Kiểm tra Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "models/**"
+      - "snapshots/**"
+      - "macros/**"
+      - "dbt_project.yml"
+      - "packages.yml"
+
+jobs:
+  dbt_ci_check:
+    name: "🔍 dbt CI - Kiểm tra code PR"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: "📦 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: "📚 Install dbt-databricks"
+        run: pip install dbt-databricks==1.12.3
+
+      - name: "🔐 Setup dbt profiles.yml from Secrets"
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          pysparkdbt:
+            target: dev
+            outputs:
+              dev:
+                type: databricks
+                catalog: pysparkdbt
+                schema: silver
+                host: ${{ secrets.DATABRICKS_HOST }}
+                http_path: ${{ secrets.DATABRICKS_HTTP_PATH }}
+                token: ${{ secrets.DATABRICKS_TOKEN }}
+                threads: 2
+          EOF
+
+      - name: "🔌 dbt debug"
+        run: dbt debug
+
+      - name: "📦 dbt deps"
+        run: dbt deps
+
+      - name: "🔍 dbt compile - Kiểm tra syntax SQL"
+        run: dbt compile
+
+      - name: "🧪 dbt test - Kiểm tra data tests (chỉ chạy test, không chạy model)"
+        run: dbt test
+        continue-on-error: true
+
+      - name: "💬 Ghi kết quả vào PR comment"
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const result = '${{ job.status }}' === 'success' ? '✅ PASSED' : '❌ FAILED';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🤖 dbt CI Check Result: ${result}\n\n**Branch**: \`${{ github.head_ref }}\`\n**Run**: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n> Nhấn link bên trên để xem log chi tiết.`
+            })

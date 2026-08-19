@@ -1,0 +1,196 @@
+name: dbt Daily Pipeline - BlueSM
+
+on:
+  # =====================================================================
+  # LỊCH CHẠY TỰ ĐỘNG (CRON JOB)
+  # Múi giờ GitHub Actions luôn là UTC.
+  # Việt Nam = UTC+7, nên muốn chạy lúc 1:00 SA (Hà Nội) = 18:00 UTC hôm trước.
+  # =====================================================================
+  schedule:
+    - cron: "0 18 * * *"   # Mỗi ngày lúc 1:00 SA giờ Hà Nội (18:00 UTC)
+
+  # Cho phép kích hoạt thủ công từ tab Actions trên GitHub
+  workflow_dispatch:
+    inputs:
+      full_refresh:
+        description: "Chạy Full Refresh (xóa & tạo lại toàn bộ bảng)?"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      select_models:
+        description: "Chọn model cụ thể cần chạy (để trống = chạy tất cả)"
+        required: false
+        default: ""
+
+  # Kích hoạt khi có push vào nhánh main (CI - Kiểm thử khi merge code)
+  push:
+    branches:
+      - main
+    paths:
+      - "models/**"
+      - "snapshots/**"
+      - "macros/**"
+      - "dbt_project.yml"
+      - "packages.yml"
+
+jobs:
+  # ===========================================================
+  # JOB 1: DBT PIPELINE CHÍNH (SNAPSHOT + RUN + TEST)
+  # ===========================================================
+  dbt_pipeline:
+    name: "🚀 dbt Pipeline BlueSM"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # ----------------------------------------------------------
+      # BƯỚC 1: Checkout code từ GitHub
+      # ----------------------------------------------------------
+      - name: "📦 Checkout repository"
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------
+      # BƯỚC 2: Cài Python 3.11
+      # ----------------------------------------------------------
+      - name: "🐍 Setup Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ----------------------------------------------------------
+      # BƯỚC 3: Cài đặt dbt-databricks
+      # ----------------------------------------------------------
+      - name: "📚 Install dbt-databricks"
+        run: |
+          pip install dbt-databricks==1.12.3
+
+      # ----------------------------------------------------------
+      # BƯỚC 4: Tạo file profiles.yml từ GitHub Secrets
+      # (KHÔNG bao giờ lưu token vào code!)
+      # ----------------------------------------------------------
+      - name: "🔐 Setup dbt profiles.yml from Secrets"
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          pysparkdbt:
+            target: prod
+            outputs:
+              prod:
+                type: databricks
+                catalog: pysparkdbt
+                schema: silver
+                host: ${{ secrets.DATABRICKS_HOST }}
+                http_path: ${{ secrets.DATABRICKS_HTTP_PATH }}
+                token: ${{ secrets.DATABRICKS_TOKEN }}
+                threads: 4
+          EOF
+
+      # ----------------------------------------------------------
+      # BƯỚC 5: Kiểm tra kết nối Databricks
+      # ----------------------------------------------------------
+      - name: "🔌 dbt debug - Kiểm tra kết nối"
+        run: dbt debug
+
+      # ----------------------------------------------------------
+      # BƯỚC 6: Cài các packages (dbt_utils,...)
+      # ----------------------------------------------------------
+      - name: "📦 dbt deps - Cài packages"
+        run: dbt deps
+
+      # ----------------------------------------------------------
+      # BƯỚC 7: Chạy Snapshots (SCD Type 2)
+      # Cập nhật 5 bảng DimCustomers, DimDrivers, DimVehicles, DimPayments, DimLocations
+      # ----------------------------------------------------------
+      - name: "📸 dbt snapshot - Cập nhật lịch sử SCD Type 2"
+        run: dbt snapshot
+
+      # ----------------------------------------------------------
+      # BƯỚC 8: Chạy tầng Silver (Incremental)
+      # ----------------------------------------------------------
+      - name: "🥈 dbt run - Tầng Silver"
+        run: dbt run --select silver
+
+      # ----------------------------------------------------------
+      # BƯỚC 9: Chạy tầng Gold (Data Marts)
+      # Nếu workflow_dispatch với full_refresh=true thì thêm --full-refresh
+      # ----------------------------------------------------------
+      - name: "🥇 dbt run - Tầng Gold (Data Marts)"
+        run: |
+          if [ "${{ github.event.inputs.full_refresh }}" == "true" ]; then
+            echo "⚡ Chạy Full Refresh mode..."
+            dbt run --select gold --full-refresh
+          elif [ -n "${{ github.event.inputs.select_models }}" ]; then
+            echo "🎯 Chạy model cụ thể: ${{ github.event.inputs.select_models }}"
+            dbt run --select ${{ github.event.inputs.select_models }}
+          else
+            echo "🚀 Chạy toàn bộ tầng Gold..."
+            dbt run --select gold
+          fi
+
+      # ----------------------------------------------------------
+      # BƯỚC 10: Chạy Data Tests
+      # ----------------------------------------------------------
+      - name: "🧪 dbt test - Kiểm tra chất lượng dữ liệu"
+        run: dbt test
+
+      # ----------------------------------------------------------
+      # BƯỚC 11: Sinh tài liệu dbt (catalog)
+      # ----------------------------------------------------------
+      - name: "📄 dbt docs generate - Sinh tài liệu"
+        run: dbt docs generate
+
+      # ----------------------------------------------------------
+      # BƯỚC 12: Upload artifacts (catalog, manifest) lên GitHub
+      # ----------------------------------------------------------
+      - name: "📤 Upload dbt docs artifacts"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dbt-docs-${{ github.run_number }}
+          path: |
+            target/catalog.json
+            target/manifest.json
+            target/index.html
+          retention-days: 30
+
+      # ----------------------------------------------------------
+      # BƯỚC 13: Upload run results (log lỗi nếu có)
+      # ----------------------------------------------------------
+      - name: "📤 Upload run results"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dbt-run-results-${{ github.run_number }}
+          path: |
+            target/run_results.json
+            logs/
+          retention-days: 7
+
+  # ===========================================================
+  # JOB 2: GỬI THÔNG BÁO KẾT QUẢ QUA TELEGRAM
+  # (Chạy sau Job 1, dù thành công hay thất bại)
+  # ===========================================================
+  notify:
+    name: "📬 Gửi thông báo kết quả"
+    runs-on: ubuntu-latest
+    needs: dbt_pipeline
+    if: always()
+
+    steps:
+      - name: "📤 Gửi thông báo Telegram"
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            🚀 *BlueSM dbt Pipeline*
+            
+            📊 *Kết quả*: ${{ needs.dbt_pipeline.result == 'success' && '✅ THÀNH CÔNG' || '❌ THẤT BẠI' }}
+            🕐 *Thời gian*: ${{ github.run_started_at }}
+            🔗 *Chi tiết*: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            📁 *Branch*: ${{ github.ref_name }}
+            👤 *Trigger bởi*: ${{ github.actor }}
