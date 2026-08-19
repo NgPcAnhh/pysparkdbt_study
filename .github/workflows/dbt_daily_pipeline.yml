@@ -70,7 +70,6 @@ jobs:
 
       # ----------------------------------------------------------
       # BƯỚC 4: Tạo file profiles.yml từ GitHub Secrets
-      # (KHÔNG bao giờ lưu token vào code!)
       # ----------------------------------------------------------
       - name: "🔐 Setup dbt profiles.yml from Secrets"
         run: |
@@ -103,7 +102,6 @@ jobs:
 
       # ----------------------------------------------------------
       # BƯỚC 7: Chạy Snapshots (SCD Type 2)
-      # Cập nhật 5 bảng DimCustomers, DimDrivers, DimVehicles, DimPayments, DimLocations
       # ----------------------------------------------------------
       - name: "📸 dbt snapshot - Cập nhật lịch sử SCD Type 2"
         run: dbt snapshot
@@ -116,7 +114,6 @@ jobs:
 
       # ----------------------------------------------------------
       # BƯỚC 9: Chạy tầng Gold (Data Marts)
-      # Nếu workflow_dispatch với full_refresh=true thì thêm --full-refresh
       # ----------------------------------------------------------
       - name: "🥇 dbt run - Tầng Gold (Data Marts)"
         run: |
@@ -171,11 +168,10 @@ jobs:
           retention-days: 7
 
   # ===========================================================
-  # JOB 2: GHI TÓM TẮT KẾT QUẢ VÀO GITHUB ACTIONS SUMMARY
-  # (Không cần cấu hình gì thêm, tự động hoạt động)
+  # JOB 2: GỬI THÔNG BÁO THÔNG QUA TELEGRAM & SUMMARY
   # ===========================================================
   notify:
-    name: "📬 Ghi kết quả Pipeline"
+    name: "📬 Gửi thông báo kết quả"
     runs-on: ubuntu-latest
     needs: dbt_pipeline
     if: always()
@@ -201,12 +197,9 @@ jobs:
           echo "| **Trigger bởi** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Thời gian** | ${{ github.run_started_at }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Run ID** | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> 💡 Để nhận thông báo Telegram, thêm secrets \`TELEGRAM_BOT_TOKEN\` và \`TELEGRAM_CHAT_ID\` vào GitHub repository." >> $GITHUB_STEP_SUMMARY
 
-      # Bước Telegram - CHỈ chạy khi đã cấu hình Secrets
-      - name: "📤 Gửi thông báo Telegram (nếu đã cấu hình)"
-        if: secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+      - name: "📤 Gửi thông báo Telegram"
+        continue-on-error: true
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
